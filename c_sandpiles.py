@@ -141,7 +141,7 @@ class SandGrid:
 
     # Initilze MxN grid
     # Outside is off the table
-    def __init__(self, M, N, drop_controls, add_sand=1, max=4, grad=45):
+    def __init__(self, M, N, drop_controls, add_sand=1, max=4, grad=60):
         self.M = M
         self.N = N
         self.drop_controls = drop_controls
@@ -151,14 +151,12 @@ class SandGrid:
         self.mass_array = [0]
         # make a subclass of AV data
         self.avalanche = self.Avalanche()
-        self.sand_diff = np.round(np.tan((grad * np.pi)/180)) # what the gradient corresponds to in sand difference.
-
+        self.sand_diff = np.round(np.tan((grad * np.pi)/180)) - 1 # what the gradient corresponds to in sand difference.
+        print(self.sand_diff)
 
 
     # prints the sand value in a MxN grid
     def print_grid(self):
-        print(self.sand_diff)
-        print()
 
         for i in self.grid:
             for j in i:
@@ -224,15 +222,19 @@ class SandGrid:
                         tops_at[i][j] = 1
                         # avalanche adds the number of sand spilled during self.spill()
                         if self.drop_controls.get('smart_spill'):
-                            av += self.smart_spill(i,j)
+                            spill_results = self.smart_spill(i,j)
+                            av += spill_results[0]
+                            spill = spill_results[1 ]
+                            # maybe we have a spill (might not have high enough gradient)
                         else:
                             av += self.spill(i, j)
+                            #We have had a spill, so will need to check if there are any left over big piles.
+                            spill = True
 
                         # We have to increase the life time of avalanche by 1
                         lifetime += 1
 
-                        #We have had a spill, so will need to check if there are any left over big piles.
-                        spill = True
+
 
         # Now we should count all the unique sites
         n_u_top = self.grid_sum(tops_at)
@@ -285,8 +287,6 @@ class SandGrid:
 
         return d_max + 1
 
-
-
     def spill(self, i, j):
 
         # decrease the number of sand at (i,j) by self.max
@@ -311,51 +311,55 @@ class SandGrid:
         return self.max
 
     def smart_spill(self, i, j):
-            # decrease the number of sand at (i,j) by self.max
+        print("Is a spill")
+        spill = False
 
-            n_spilled = 0
-            # check if on the edge
-            # Can only spill downhill
+        n_spilled = 0
+        # check if on the edge
+        # Can only spill downhill
 
-            # Not on a hoz edge
-            # Check to see if can spill downhill with a bigger gradient difference
+        # Not on a hoz edge
+        # Check to see if can spill downhill with a bigger gradient difference
 
-            if i != 0:
-                if self.grid[i][j] => self.grid[i-1][j] + self.sand_diff:
-                    self.grid[i-1][j] += 1
-                    n_spilled += 1
-            else:
-                # spilled off edge
+        if i != 0:
+            if self.grid[i][j]  > self.grid[i-1][j] + self.sand_diff:
+                self.grid[i-1][j] += 1
                 n_spilled += 1
+        else:
+            # spilled off edge
+            n_spilled += 1
 
-            if (i != self.M - 1):
-                if self.grid[i][j] => self.grid[i+1][j]+ self.sand_diff:
-                    self.grid[i+1][j] += 1
-                    n_spilled += 1
-            else:
-                # spilled off edge
+        if (i != self.M - 1):
+            if self.grid[i][j] > self.grid[i+1][j] + self.sand_diff:
+                self.grid[i+1][j] += 1
                 n_spilled += 1
+        else:
+            # spilled off edge
+            n_spilled += 1
 
-            # Check if not on Vert edge and is spilling downhill:
-            if j != 0:
-                if self.grid[i][j] => self.grid[i][j-1]+ self.sand_diff:
-                    self.grid[i][j-1] += 1
-                    n_spilled += 1
-            else:
+        # Check if not on Vert edge and is spilling downhill:
+        if j != 0:
+            if self.grid[i][j] > self.grid[i][j-1] + self.sand_diff:
+                self.grid[i][j-1] += 1
                 n_spilled += 1
+        else:
+            n_spilled += 1
 
-            if (j != self.N - 1):
-                if self.grid[i][j] => self.grid[i][j+1]+ self.sand_diff:
-                    self.grid[i][j+1] += 1
-                    n_spilled += 1
-            else:
+        if (j != self.N - 1):
+            if self.grid[i][j] > self.grid[i][j+1] + self.sand_diff:
+                self.grid[i][j+1] += 1
                 n_spilled += 1
+        else:
+            n_spilled += 1
 
 
-            self.grid[i][j] -= n_spilled
+        self.grid[i][j] -= n_spilled
 
-            # Note that is nothing spilled, it must be surrounded by hills over max, so running program again will get the surrounding first. It will evetually each somewhere it can spill/edge so will terminate
-            return n_spilled
+
+        # Note that is nothing spilled, it must be surrounded by hills over max, so running program again will get the surrounding first. It will evetually each somewhere it can spill/edge so will terminate.
+        if n_spilled != 0:
+            spill = True
+        return [n_spilled, spill]
 
     def graph(self):
 
@@ -397,17 +401,17 @@ if __name__ == '__main__':
 
     '''===================================================================='''
     # Controls
-    M = 6
-    N = 7
-    steps = 10000
-    Gradient = 80
+    M = 3
+    N = 3
+    steps = 70
+    gradient = 60
 
 
 
     #Drop Distribution + turn on/off various parmas
-    drop_controls =  { 'dis'   : #'uniform',
+    drop_controls =  { 'dis'   : 'uniform',
                                 #'gauss', # centered on middle
-                                 'powerlaw', # centered on left side
+                                # 'powerlaw', # centered on left side
                  'meanx'  : M/2, # only used for gauss
                  'meany'  : N/2,
                  'sigmax' : M/6,
@@ -421,9 +425,10 @@ if __name__ == '__main__':
     print('Running a {0}x{1} grid for {2} steps with a {3} Distribution'.format(M,N,steps, drop_controls.get('dis')))
     # Initilze grid MxN
     # it will be flat z = 0
-    Table = SandGrid(M, N, drop_controls=drop_controls,grad=gradient)
+    Table = SandGrid(M, N, drop_controls=drop_controls, grad=gradient)
 
     for i in range(steps):
+        Table.print_grid()
 
         # Drop sand on Table
         # and return that location to .is_hill to see if this drop causes am avalanche
