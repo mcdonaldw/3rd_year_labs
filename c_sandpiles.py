@@ -4,7 +4,7 @@ Sand piles for comp - Will MCDONALD
 ======================================
 '''
 
-from random import randint
+from random import randint, uniform
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.interpolate as sp
@@ -141,10 +141,10 @@ class SandGrid:
 
     # Initilze MxN grid
     # Outside is off the table
-    def __init__(self, M, N, drop_controls, add_sand=1, max=4, grad=60):
+    def __init__(self, M, N, controls, add_sand=1, max=4, grad=60):
         self.M = M
         self.N = N
-        self.drop_controls = drop_controls
+        self.controls = controls
         self.add_sand = add_sand
         self.max = max
         self.grid = [[0 for i in range(self.N)] for j in range(self.M)]
@@ -170,26 +170,28 @@ class SandGrid:
         # every time we drop sand, increase time (AV) by 1
         self.avalanche.nextdrop()
 
-        if self.drop_controls.get('dis') == 'uniform':
+        if self.controls.get('dis') == 'uniform':
             x = randint(0, self.M - 1)
             y = randint(0, self.N - 1)
 
-        if self.drop_controls.get('dis') == 'gauss':
+        if self.controls.get('dis') == 'gauss':
             # want gauss centered on middle, with sigma such that being out off our plot happens 100 - 99.73% of the time (and distregard otherwise)
             # so self.M/2 to get the range either side, then /3 to be within 3 Stddiv
             x = -1
             y = -1
+
             while x not in range(0, self.M - 1):
-                x = int(np.random.normal(self.drop_controls.get('meanx'), self.drop_controls.get('sigmax')))
+                x = int(np.random.normal(self.controls.get('meanx'), self.controls.get('sigmax')))
 
             while y not in range(0, self.N - 1):
-                y = int(np.random.normal(self.drop_controls.get('meany'), self.drop_controls.get('sigmay')))
+                y = int(np.random.normal(self.controls.get('meany'), self.controls.get('sigmay')))
 
-        if self.drop_controls.get('dis') == 'powerlaw':
+
+        if self.controls.get('dis') == 'powerlaw':
             x = -1
             y = -1
 
-            a = self.drop_controls.get('powerlaw_a')
+            a = self.controls.get('powerlaw_a')
             while x not in range(0, self.M - 1):
                 x = int(np.random.power(a))
 
@@ -221,10 +223,10 @@ class SandGrid:
                         # We have a site (Only count once)
                         tops_at[i][j] = 1
                         # avalanche adds the number of sand spilled during self.spill()
-                        if self.drop_controls.get('smart_spill'):
+                        if self.controls.get('smart_spill'):
                             spill_results = self.smart_spill(i,j)
                             av += spill_results[0]
-                            spill = spill_results[1 ]
+                            spill = spill_results[1]
                             # maybe we have a spill (might not have high enough gradient)
                         else:
                             av += self.spill(i, j)
@@ -315,6 +317,12 @@ class SandGrid:
         spill = False
 
         n_spilled = 0
+
+        # there is a chance that the pile wont spill at all. (only spill stoc_prob percent of the time)
+        if self.controls.get('stocastic_spill') and uniform(0, 1) > self.controls.get('stoc_prob'):
+            return [n_spilled, spill]
+
+
         # check if on the edge
         # Can only spill downhill
 
@@ -409,7 +417,7 @@ if __name__ == '__main__':
 
 
     #Drop Distribution + turn on/off various parmas
-    drop_controls =  { 'dis'   : 'uniform',
+    controls =  { 'dis'   : 'uniform',
                                 #'gauss', # centered on middle
                                 # 'powerlaw', # centered on left side
                  'meanx'  : M/2, # only used for gauss
@@ -417,15 +425,17 @@ if __name__ == '__main__':
                  'sigmax' : M/6,
                  'sigmay' : N/6,
                  'powerlaw_a' : 1.1, # a > 4
-                 'smart_spill' : True
+                 'smart_spill' : True,
+                 'stocastic_spill': True,
+                 'stoc_prob' : 0.9
                  }
 
     '''===================================================================='''
 
-    print('Running a {0}x{1} grid for {2} steps with a {3} Distribution'.format(M,N,steps, drop_controls.get('dis')))
+    print('Running a {0}x{1} grid for {2} steps with a {3} Distribution'.format(M,N,steps, controls.get('dis')))
     # Initilze grid MxN
     # it will be flat z = 0
-    Table = SandGrid(M, N, drop_controls=drop_controls, grad=gradient)
+    Table = SandGrid(M, N, controls=controls, grad=gradient)
 
     for i in range(steps):
         Table.print_grid()
