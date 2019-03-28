@@ -98,7 +98,6 @@ class SandGrid:
 
 
 
-
         def plot_relationship(self, xlist, ylist, xlabel, ylabel, log=True):
 
             if log:
@@ -141,7 +140,7 @@ class SandGrid:
 
     # Initilze MxN grid
     # Outside is off the table
-    def __init__(self, M, N, controls, add_sand=1, max=4, grad=60):
+    def __init__(self, M, N, controls, add_sand=1, max=4, grad=45):
         self.M = M
         self.N = N
         self.controls = controls
@@ -152,8 +151,10 @@ class SandGrid:
         # make a subclass of AV data
         self.avalanche = self.Avalanche()
         self.sand_diff = np.round(np.tan((grad * np.pi)/180)) - 1 # what the gradient corresponds to in sand difference.
-        print(self.sand_diff)
-
+        if self.sand_diff < 1:
+            self.sand_diff = 1
+        if self.sand_diff > 6:
+            self.sand_diff = 6
 
     # prints the sand value in a MxN grid
     def print_grid(self):
@@ -167,36 +168,48 @@ class SandGrid:
     # Randomly drop a peice of sand somewhere on Grid
     # Arryas start at 0
     def drop_sand(self):
+
         # every time we drop sand, increase time (AV) by 1
         self.avalanche.nextdrop()
 
-        if self.controls.get('dis') == 'uniform':
-            x = randint(0, self.M - 1)
+        # if we are using control to only drop in middle
+        if self.controls.get('drop_mid'):
+            x = int(self.M/2)
+            y = int(self.N/2)
+
+        elif self.controls.get('drop_half'):
+            x = randint(0, int(self.M/2))
             y = randint(0, self.N - 1)
 
-        if self.controls.get('dis') == 'gauss':
-            # want gauss centered on middle, with sigma such that being out off our plot happens 100 - 99.73% of the time (and distregard otherwise)
-            # so self.M/2 to get the range either side, then /3 to be within 3 Stddiv
-            x = -1
-            y = -1
+        else:
 
-            while x not in range(0, self.M - 1):
-                x = int(np.random.normal(self.controls.get('meanx'), self.controls.get('sigmax')))
+            if self.controls.get('dis') == 'uniform':
+                x = randint(0, self.M - 1)
+                y = randint(0, self.N - 1)
 
-            while y not in range(0, self.N - 1):
-                y = int(np.random.normal(self.controls.get('meany'), self.controls.get('sigmay')))
+            if self.controls.get('dis') == 'gauss':
+                # want gauss centered on middle, with sigma such that being out off our plot happens 100 - 99.73% of the time (and distregard otherwise)
+                # so self.M/2 to get the range either side, then /3 to be within 3 Stddiv
+                x = -1
+                y = -1
+
+                while x not in range(0, self.M - 1):
+                    x = int(np.random.normal(self.controls.get('meanx'), self.controls.get('sigmax')))
+
+                while y not in range(0, self.N - 1):
+                    y = int(np.random.normal(self.controls.get('meany'), self.controls.get('sigmay')))
 
 
-        if self.controls.get('dis') == 'powerlaw':
-            x = -1
-            y = -1
+            if self.controls.get('dis') == 'powerlaw':
+                x = -1
+                y = -1
 
-            a = self.controls.get('powerlaw_a')
-            while x not in range(0, self.M - 1):
-                x = int(np.random.power(a))
+                a = self.controls.get('powerlaw_a')
+                while x not in range(0, self.M - 1):
+                    x = int(np.random.power(a))
 
-            while y not in range(0, self.N - 1):
-                y = int(np.random.power(a))
+                while y not in range(0, self.N - 1):
+                    y = int(np.random.power(a))
 
         self.grid[x][y] += self.add_sand
 
@@ -313,7 +326,6 @@ class SandGrid:
         return self.max
 
     def smart_spill(self, i, j):
-        print("Is a spill")
         spill = False
 
         n_spilled = 0
@@ -409,10 +421,10 @@ if __name__ == '__main__':
 
     '''===================================================================='''
     # Controls
-    M = 3
-    N = 3
-    steps = 70
-    gradient = 60
+    M = 10
+    N = 9
+    steps = 1000
+    gradient = 50 # 45 < grad < 80
 
 
 
@@ -427,7 +439,9 @@ if __name__ == '__main__':
                  'powerlaw_a' : 1.1, # a > 4
                  'smart_spill' : True,
                  'stocastic_spill': True,
-                 'stoc_prob' : 0.9
+                 'stoc_prob' : 0.9,
+                 'drop_mid' : False, # drop in the middle of the grid
+                 'drop_half': True # drop only on top half
                  }
 
     '''===================================================================='''
@@ -438,7 +452,6 @@ if __name__ == '__main__':
     Table = SandGrid(M, N, controls=controls, grad=gradient)
 
     for i in range(steps):
-        Table.print_grid()
 
         # Drop sand on Table
         # and return that location to .is_hill to see if this drop causes am avalanche
