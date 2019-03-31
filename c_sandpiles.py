@@ -53,7 +53,6 @@ class SandGrid:
 
 
         def graph_distribution(self, array, title, xlabel, fit=False):
-
             # get your array, (should already be non-zero)
             vals = np.array(array)
 
@@ -179,7 +178,7 @@ class SandGrid:
         print()
 
     # Randomly drop a peice of sand somewhere on Grid
-    # Arryas start at 0
+    # Arrays start at 0
     def drop_sand(self):
 
         # every time we drop sand, increase time (AV) by 1
@@ -225,7 +224,7 @@ class SandGrid:
                     y = int(np.random.power(a))
 
         self.grid[x][y] += self.add_sand
-        print('({0},{1})'.format(x,y))
+
         return {'x': x, 'y':y}
 
 
@@ -250,18 +249,12 @@ class SandGrid:
 
                     if self.grid[i][j] >= self.max:
 
+                        # We have to increase the life time of avalanche by 1. But the previous
 
+                        lifetime += 1
                         # We have a site (Only count once)
                         tops_at[i][j] = 1
-                        print('Toppling {0}:{1}'.format(i,j))
 
-            # Now all the critical states topple at the same Time
-            # if this was done in the same for for loop, they would not be
-            # 'happening at the same instant' and measuring the lifetime is more difficult
-                        '''
-            for i in range(self.M):
-                for j in range(self.N):
-                    if tops_at[i][j] == 1:'''
                         # avalanche adds the number of sand spilled during self.spill()
                         if self.controls.get('smart_spill'):
                             spill_results = self.smart_spill(i,j)
@@ -272,10 +265,6 @@ class SandGrid:
                             av += self.spill(i, j)
                             #We have had a spill, so will need to check if there are any left over big piles.
                             spill = True
-
-            # We have to increase the life time of avalanche by 1. But the previous
-            if spill:
-                lifetime += 1
 
             for i in range(self.M):
                 for j in range(self.N):
@@ -290,7 +279,6 @@ class SandGrid:
 
         # Claculate the radius from (x_0, y_0)
         max_r = self.radius_from(xy_dict, tops_at)
-
         # Return the size of avalanche in all
         return {'size': av , 'area':n_u_top, 'lifetime':lifetime, 'radius':max_r}
 
@@ -341,7 +329,6 @@ class SandGrid:
         # decrease the number of sand at (i,j) by self.max
 
         self.grid[i][j] -= self.max
-        print('self.grid[{0}][{1}]: {2}'.format(i,j,self.grid[i][j]))
         # check if on the edge
         # Can spill uphill - nonphysical
 
@@ -455,9 +442,9 @@ if __name__ == '__main__':
 
     '''===================================================================='''
     # Controls
-    M = 2
-    N = 3
-    steps = 300
+    M = 4
+    N = 5
+    steps = 100000
     gradient = 45 # 45 < grad < 80
 
     #Drop Distribution + turn on/off various parmas
@@ -470,7 +457,7 @@ if __name__ == '__main__':
                  'sigmay' : N/6,
                  'powerlaw_a' : 1.1, # a > 1
                  'smart_spill' : True,
-                 'stocastic_spill': False,
+                 'stocastic_spill': True,
                  'stoc_prob' : 0.9,
                  'drop_mid' : False, # drop in the middle of the grid
                  'drop_half': False,# drop only on top half
@@ -486,7 +473,7 @@ if __name__ == '__main__':
     Table = SandGrid(M, N, controls=controls, grad=gradient)
 
     for i in range(steps):
-        Table.print_grid()
+
         # Drop sand on Table
         # and return that location to .is_hill to see if this drop causes am avalanche
         # We return the location to calculate the radius
@@ -505,22 +492,22 @@ if __name__ == '__main__':
 
     Table.print_grid()
     '''===================================================================='''
-    #Table.graph_array(Table.mass_array, 'Time', 'Mass of Sand', 'Sand Mass Over Time')
-    #Table.graph_array(Table.avalanche.av_size, 'Time', 'avalanche Size', 'avalanches Over Time')
-    #Table.graph_array(Table.avalanche.av_area, 'Time', 'Number of Unique Steps', 'avalanche Area over Time')
-    #Table.graph_array(Table.avalanche.av_lifet, 'Time', 'Lifetime of avalanche', 'avalanche Lifetime over Time')
-    #Table.graph_array(Table.avalanche.av_r, 'Time', 'Radius of avalanche', 'avalanche Radius over Time')
+    Table.graph_array(Table.mass_array, 'Time', 'Mass of Sand', 'Sand Mass Over Time')
+    Table.graph_array(Table.avalanche.av_size, 'Time', 'Avalanche Size', 'Avalanches Over Time')
+    Table.graph_array(Table.avalanche.av_area, 'Time', 'Number of Unique Steps', 'Avalanche Area over Time')
+    Table.graph_array(Table.avalanche.av_lifet, 'Time', 'Lifetime of Avalanche', 'Avalanche Lifetime over Time')
+    Table.graph_array(Table.avalanche.av_r, 'Time', 'Radius of Avalanche', 'Avalanche Radius over Time')
 
     ''' ===================================================================='''
-    #Table.avalanche.graph_distribution(Table.avalanche.av_size, 'Avalanche Size Distribution','Size',fit=False)
-    #.avalanche.graph_distribution(Table.avalanche.av_area, 'Avalanche Area Distribution', 'Area', fit=False)
+    Table.avalanche.graph_distribution(Table.avalanche.av_size, 'Avalanche Size Distribution','Size',fit=False)
+    Table.avalanche.graph_distribution(Table.avalanche.av_area, 'Avalanche Area Distribution', 'Area', fit=False)
     Table.avalanche.graph_distribution(Table.avalanche.av_lifet, 'Avalanche Lifetime Distribution', 'Lifetime', fit=False)
-    #Table.avalanche.graph_distribution(Table.avalanche.av_r, 'Avalanche Radius Distribution', 'Radius', fit=False)
+    Table.avalanche.graph_distribution(Table.avalanche.av_r, 'Avalanche Radius Distribution', 'Radius', fit=False)
     ''' ===================================================================='''
 
-    #Table.avalanche.plot_relationship(Table.avalanche.av_size, Table.avalanche.av_size, 'Size', 'Size')
-    #Table.avalanche.plot_relationship(Table.avalanche.av_area, Table.avalanche.av_size, 'Area', 'Size')
-    #Table.avalanche.plot_relationship(Table.avalanche.av_lifet, Table.avalanche.av_size, 'Life Time', 'Size')
-    #Table.avalanche.plot_relationship(Table.avalanche.av_r,Table.avalanche.av_size, 'Radius', 'Size')
+    Table.avalanche.plot_relationship(Table.avalanche.av_size, Table.avalanche.av_size, 'Size', 'Size')
+    Table.avalanche.plot_relationship(Table.avalanche.av_area, Table.avalanche.av_size, 'Area', 'Size')
+    Table.avalanche.plot_relationship(Table.avalanche.av_lifet, Table.avalanche.av_size, 'Life Time', 'Size')
+    Table.avalanche.plot_relationship(Table.avalanche.av_r,Table.avalanche.av_size, 'Radius', 'Size')
 
-    #Table.graph()
+    Table.graph()
